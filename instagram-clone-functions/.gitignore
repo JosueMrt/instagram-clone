@@ -66,3 +66,6 @@ node_modules/
 
 # Firebase Auth Key
 admin.json
+
+# Testing stuff, needs to be removed
+super-secret.txt
