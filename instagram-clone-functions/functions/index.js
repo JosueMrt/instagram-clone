@@ -11,36 +11,34 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-app.get("/posts", (req, res) => {
-  db.collection("posts")
-    .orderBy("date", "desc")
-    .get()
-    .then((data) => {
-      let posts = [];
-      data.forEach((doc) => {
-        posts.push({ id: doc.id, ...doc.data() });
-      });
-      return res.json(posts);
-    })
-    .catch((err) => console.error(err));
+// Posts routes
+app.get("/posts", async (req, res) => {
+  const posts = await db.collection("posts").get();
+  let data = [];
+  posts.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+  res.json(data);
+  // ^ Needs refactoring
 });
 
-app.post("/posts", (req, res) => {
+app.post("/posts", async (req, res) => {
   const newPost = {
     userHandle: req.body.userHandle,
     caption: req.body.caption,
     imgUrl: req.body.imgUrl,
     date: new Date().toISOString(),
   };
-  db.collection("posts")
-    .add(newPost)
-    .then((doc) => {
-      res.json({ message: `Document ${doc.id} created sucessfully` });
-    })
-    .catch((err) => {
-      res.status(500).json({ error: "Something went wrong" });
-      console.error(err);
-    });
+  doc = await db.collection("posts").add(newPost);
+  res.json({ message: `Document ${doc.id} created sucessfully` });
+});
+
+app.post("/signup", (req, res) => {
+  const newUser = {
+    email: req.body.email,
+    password: req.body.password,
+    confirmPassword: req.body.confirmPassword,
+    handle: req.body.handle,
+  };
+  // TODO: Validate Data
 });
 
 exports.api = functions.https.onRequest(app);
