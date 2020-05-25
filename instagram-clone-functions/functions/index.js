@@ -27,6 +27,37 @@ firebase.initializeApp(firebaseConfig);
 // Store DB Route
 const db = admin.firestore();
 
+// Auth middleware
+const auth = async (req, res, next) => {
+  let idToken;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    idToken = req.headers.authorization.split("Bearer ")[1];
+  } else {
+    console.error("No token found");
+    res.status(403).json({ error: "Unauthorized" });
+  }
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    req.user = decodedToken;
+
+    const user = await db
+      .collection("users")
+      .where("id", "==", req.user.uid)
+      .limit(1)
+      .get();
+
+    req.user.handle = user.docs[0].data().handle;
+    return next();
+  } catch (err) {
+    res.status(500).json({ error: `Invalid Token: ${err.code}` });
+    console.error(err);
+  }
+};
+
 // Posts routes
 app.get("/posts", async (req, res) => {
   try {
@@ -41,10 +72,10 @@ app.get("/posts", async (req, res) => {
   // ^ Needs refactoring
 });
 
-app.post("/posts", async (req, res) => {
+app.post("/posts", auth, async (req, res) => {
   try {
     const newPost = {
-      userHandle: req.body.userHandle,
+      userHandle: req.user.handle,
       caption: req.body.caption,
       imgUrl: req.body.imgUrl,
       date: new Date().toISOString(),
@@ -69,28 +100,27 @@ app.post("/signup", async (req, res) => {
 
   // Validate user data
   let errors = {};
-  const emailRegEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  // const emailRegEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
   Object.keys(newUser).map((key) => {
     if (!newUser[key].trim().length) errors[key] = "Must not be empty";
   });
-  if (!newUser.email.match(emailRegEx)) errors.email = "Must be a valid email";
+  // if (!newUser.email.match(emailRegEx)) errors.email = "Must be a valid email";
   if (newUser.password !== newUser.confirmPassword) {
     errors.password = "Password must match";
   }
 
   Object.keys(errors).length && res.status(400).json(errors);
 
-  const user = await db.doc(`/users/${newUser.handle}`).get();
-  // Check if user handle is already taken
-  if (user.exists) {
-    res
-      .status(500)
-      .json({ handle: `handle "${newUser.handle}" is already taken` });
-  } else {
-    // If not create the account
-    try {
-      // Creating the account in firebase
+  try {
+    const user = await db.doc(`/users/${newUser.handle}`).get();
+    // Check if user handle is already taken
+    if (user.exists) {
+      res
+        .status(500)
+        .json({ handle: `handle "${newUser.handle}" is already taken` });
+    } else {
+      // If not create the account
       const data = await firebase
         .auth()
         .createUserWithEmailAndPassword(newUser.email, newUser.password);
@@ -102,17 +132,31 @@ app.post("/signup", async (req, res) => {
         createdAt: new Date().toISOString(),
         id: data.user.uid,
       });
-
       const token = await data.user.getIdToken();
       res.status(201).json({ token });
-
-      // Catch any errors that may occur
-    } catch (err) {
-      err.code === "auth/email-already-in-use"
-        ? res.status(400).json({ email: "email already in use" })
-        : res.status(500).json({ error: `Error ${err.code}` });
-      console.error(err);
     }
+
+    // Catch any errors that may occur
+  } catch (err) {
+    err.code === "auth/email-already-in-use"
+      ? res.status(400).json({ email: "email already in use" })
+      : res.status(500).json({ error: `Error ${err.code}` });
+    console.error(err);
+  }
+});
+
+// Login Route ⤵
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const data = await firebase
+      .auth()
+      .signInWithEmailAndPassword(email, password);
+    const token = await data.user.getIdToken();
+    res.json({ token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.code });
   }
 });
 
