@@ -67,6 +67,20 @@ app.post("/signup", async (req, res) => {
     handle: req.body.handle,
   };
 
+  // Validate user data
+  let errors = {};
+  const emailRegEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+  Object.keys(newUser).map((key) => {
+    if (!newUser[key].trim().length) errors[key] = "Must not be empty";
+  });
+  if (!newUser.email.match(emailRegEx)) errors.email = "Must be a valid email";
+  if (newUser.password !== newUser.confirmPassword) {
+    errors.password = "Password must match";
+  }
+
+  Object.keys(errors).length && res.status(400).json(errors);
+
   const user = await db.doc(`/users/${newUser.handle}`).get();
   // Check if user handle is already taken
   if (user.exists) {
@@ -74,10 +88,8 @@ app.post("/signup", async (req, res) => {
       .status(500)
       .json({ handle: `handle "${newUser.handle}" is already taken` });
   } else {
-
     // If not create the account
     try {
-
       // Creating the account in firebase
       const data = await firebase
         .auth()
