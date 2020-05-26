@@ -1,6 +1,6 @@
 const firebase = require("firebase");
 const config = require("../util/config");
-const {db} = require("../util/admin");
+const { db, admin } = require("../util/admin");
 const { validateSignUp } = require("../util/validators");
 
 firebase.initializeApp(config);
@@ -36,6 +36,7 @@ exports.signup = async (req, res) => {
         handle: newUser.handle,
         createdAt: new Date().toISOString(),
         id: data.user.uid,
+        profilePicUrl: `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/no-img.png?alt=media`,
       });
       const token = await data.user.getIdToken();
       res.status(201).json({ token });
@@ -62,4 +63,52 @@ exports.login = async (req, res) => {
     console.error(err);
     res.status(500).json({ error: err.code });
   }
+};
+
+exports.uploadProfileImg = (req, res) => {
+  const BusBoy = require("busboy");
+  const path = require("path");
+  const os = require("os");
+  const fs = require("fs");
+
+  const busboy = new BusBoy({ headers: req.headers });
+
+  let imgFileName;
+  let imageToUpload;
+
+  busboy.on("file", (fieldname, file, filename, mimetype) => {
+    const fileExtension = filename.split(".")[filename.split(".").length - 1];
+    imgFileName = `${Math.round(Math.random() * 1000000000)}.${fileExtension}`;
+    const filepath = path.join(os.tmpdir(), imgFileName);
+    imageToUpload = { filepath, mimetype };
+    file.pipe(fs.createWriteStream(filepath));
+  });
+  busboy.on("finish", async () => {
+    try {
+      await admin
+        .storage()
+        .bucket(config.storageBucket)
+        .upload(imageToUpload.filepath, {
+          resumable: false,
+          metadata: {
+            metadata: {
+              contentType: imageToUpload.mimetype,
+            },
+          },
+        });
+      const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/${imgFileName}?alt=media`;
+      await db
+        .doc(`/users/${req.user.handle}`)
+        .update({ profilePicUrl: imageUrl });
+      res.json({
+        message: `@${req.user.handle} profile picture updated sucessfully`,
+      });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ error: `Couldn't update profile pic: ${err.code}` });
+      console.error(err);
+    }
+  });
+  busboy.end(req.rawBody);
 };
