@@ -65,6 +65,7 @@ exports.login = async (req, res) => {
   }
 };
 
+// Upload User Profile Picture
 exports.uploadProfileImg = (req, res) => {
   const BusBoy = require("busboy");
   const path = require("path");
@@ -76,13 +77,19 @@ exports.uploadProfileImg = (req, res) => {
   let imgFileName;
   let imageToUpload;
 
-  busboy.on("file", (fieldname, file, filename, mimetype) => {
-    const fileExtension = filename.split(".")[filename.split(".").length - 1];
-    imgFileName = `${Math.round(Math.random() * 1000000000)}.${fileExtension}`;
+  busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
+    console.log(mimetype, os.tmpdir(), file)
+    if (mimetype !== "image/jpeg" && mimetype !== "image/png") {
+      return res
+        .status(400)
+        .json({ error: ".jpg / .png are the only formats supported" });
+    }
+    imgFileName = `${Math.round(Math.random() * 1000000000)}.${filename.split(".")[filename.split(".").length - 1]}`;
     const filepath = path.join(os.tmpdir(), imgFileName);
     imageToUpload = { filepath, mimetype };
     file.pipe(fs.createWriteStream(filepath));
   });
+
   busboy.on("finish", async () => {
     try {
       await admin
