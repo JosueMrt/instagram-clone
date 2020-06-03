@@ -1,4 +1,4 @@
-const firebase = require("firebase");
+firebase = require("firebase");
 const config = require("../util/config");
 const { db, admin } = require("../util/admin");
 const { validateSignUp, reduceUserDetails } = require("../util/validators");
@@ -71,6 +71,30 @@ exports.addUserDetails = async (req, res) => {
   try {
     await db.doc(`/users/${req.user.handle}`).update(userDetails);
     res.status(201).json({ message: "details updated sucessfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.code });
+  }
+};
+
+// Get own user details
+exports.getUserDetails = async (req, res) => {
+  let userData = {};
+
+  try {
+    let doc = await db.doc(`/users/${req.user.handle}`).get();
+    if (doc.exists) {
+      userData.credentials = doc.data();
+      let likes = await db
+        .collection("likes")
+        .where("userHandle", "==", req.user.handle)
+        .get();
+      userData.likes = [];
+      likes.forEach((doc) => {
+        userData.likes.push(doc.data());
+      });
+    }
+    res.json(userData);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.code });
