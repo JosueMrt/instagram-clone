@@ -1,7 +1,7 @@
 const firebase = require("firebase");
 const config = require("../util/config");
 const { db, admin } = require("../util/admin");
-const { validateSignUp } = require("../util/validators");
+const { validateSignUp, reduceUserDetails } = require("../util/validators");
 
 firebase.initializeApp(config);
 
@@ -65,6 +65,18 @@ exports.login = async (req, res) => {
   }
 };
 
+// Add user profile details
+exports.addUserDetails = async (req, res) => {
+  let userDetails = reduceUserDetails(req.body);
+  try {
+    await db.doc(`/users/${req.user.handle}`).update(userDetails);
+    res.status(201).json({ message: "details updated sucessfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.code });
+  }
+};
+
 // Upload User Profile Picture
 exports.uploadProfileImg = (req, res) => {
   const BusBoy = require("busboy");
@@ -78,13 +90,15 @@ exports.uploadProfileImg = (req, res) => {
   let imageToUpload;
 
   busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
-    console.log(mimetype, os.tmpdir(), file)
+    console.log(mimetype, os.tmpdir(), file);
     if (mimetype !== "image/jpeg" && mimetype !== "image/png") {
       return res
         .status(400)
         .json({ error: ".jpg / .png are the only formats supported" });
     }
-    imgFileName = `${Math.round(Math.random() * 1000000000)}.${filename.split(".")[filename.split(".").length - 1]}`;
+    imgFileName = `${Math.round(Math.random() * 1000000000)}.${
+      filename.split(".")[filename.split(".").length - 1]
+    }`;
     const filepath = path.join(os.tmpdir(), imgFileName);
     imageToUpload = { filepath, mimetype };
     file.pipe(fs.createWriteStream(filepath));
