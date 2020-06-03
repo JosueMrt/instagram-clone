@@ -13,6 +13,7 @@ exports.getAllPosts = async (req, res) => {
   // ^ Needs refactoring
 };
 
+// Create new post
 exports.createPost = async (req, res) => {
   try {
     const newPost = {
@@ -29,6 +30,7 @@ exports.createPost = async (req, res) => {
   }
 };
 
+// Get specific post with its comments
 exports.getPost = async (req, res) => {
   let postData = {};
   try {
@@ -38,17 +40,42 @@ exports.getPost = async (req, res) => {
         .status(404)
         .json({ error: `Post ${req.params.postId} does not exist` });
 
-    postData = { ...post.data(), postId: post.id, comments: [] };
-
     let comments = await db
       .collection("comments")
+      .orderBy("createdAt", "desc")
       .where("postId", "==", req.params.postId)
       .get();
+
+    postData = { ...post.data(), postId: post.id, comments: [] };
+    // Could we add the comments in this line? ⤴
 
     comments.forEach((doc) => {
       postData.comments.push(doc.data());
     });
     res.json(postData);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err });
+  }
+};
+
+// Create comment on post
+exports.createComment = async (req, res) => {
+  !req.body.body.length && res.json({ message: "Must not be empty" });
+  try {
+    const post = await db.doc(`/posts/${req.params.postId}`).get();
+    !post.exists && res.status(404).json({ error: "Post does not exist" });
+
+    const newComment = {
+      userHandle: req.user.handle,
+      profilePicUrl: req.user.profilePicUrl,
+      postId: req.params.postId,
+      body: req.body.body,
+      createdAt: new Date().toISOString(),
+    };
+
+    await db.collection("comments").add(newComment);
+    res.status(201).json({ message: "Comment created sucessfully" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err });

@@ -23,6 +23,7 @@ module.exports = async (req, res, next) => {
       .get();
 
     req.user.handle = user.docs[0].data().handle;
+    req.user.profilePicUrl = user.docs[0].data().profilePicUrl;
     return next();
   } catch (err) {
     res.status(500).json({ error: `Invalid Token: ${err.code}` });
