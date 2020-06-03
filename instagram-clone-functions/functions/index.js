@@ -1,7 +1,7 @@
 const functions = require("firebase-functions");
 
 const auth = require("./util/auth");
-const { getAllPosts, createPost } = require("./handlers/posts");
+const { getAllPosts, getPost, createPost } = require("./handlers/posts");
 const {
   signup,
   login,
@@ -15,6 +15,7 @@ const app = require("express")();
 
 // Posts routes
 app.get("/posts", getAllPosts);
+app.get("/posts/:postId", getPost);
 app.post("/posts", auth, createPost);
 
 // User route
