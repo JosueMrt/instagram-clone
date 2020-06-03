@@ -18,12 +18,15 @@ exports.createPost = async (req, res) => {
   try {
     const newPost = {
       userHandle: req.user.handle,
+      profilePicUrl: req.user.profilePicUrl,
       caption: req.body.caption,
       imgUrl: req.body.imgUrl,
       date: new Date().toISOString(),
+      likeCount: 0,
+      commentCount: 0,
     };
     doc = await db.collection("posts").add(newPost);
-    res.json({ message: `Document ${doc.id} created sucessfully` });
+    res.json({ ...newPost, postId: doc.id });
   } catch (err) {
     res.status(500).json({ error: "Something went wrong" });
     console.error(err);
