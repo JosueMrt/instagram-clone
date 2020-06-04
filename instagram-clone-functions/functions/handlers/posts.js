@@ -112,6 +112,34 @@ exports.likePost = async (req, res) => {
     }
   } catch (err) {
     console.error(err);
-    res.status(500).json({ err });
+    res.status(500).json({ error: err });
+  }
+};
+
+// Unlike post
+exports.unlikePost = async (req, res) => {
+  try {
+    const postQuery = db.doc(`/posts/${req.params.postId}`);
+    const post = await postQuery.get();
+    if (post.exists) {
+      let postData = { ...post.data(), postId: req.params.postId };
+      const likeDoc = await db
+        .collection("likes")
+        .where("userHandle", "==", req.user.handle)
+        .where("postId", "==", req.params.postId)
+        .limit(1)
+        .get();
+      if (!likeDoc.empty) {
+        db.doc(`/likes/${likeDoc.docs[0].id}`).delete();
+        postData.likeCount--;
+        await postQuery.update({ likeCount: postData.likeCount });
+        res.status(200).json(postData);
+      } else res.status(400).json({ error: "Not liked" });
+    } else {
+      res.status(404).json({ error: "Not found" });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err });
   }
 };

@@ -7,6 +7,7 @@ const {
   createPost,
   createComment,
   likePost,
+  unlikePost,
 } = require("./handlers/posts");
 
 const {
@@ -26,7 +27,7 @@ app.get("/posts/:postId", getPost);
 app.post("/posts", auth, createPost);
 app.post("/posts/:postId/comment", auth, createComment);
 app.get("/posts/:postId/like", auth, likePost);
-// app.get("/posts/:postId/unlike", auth, unlikePost);
+app.get("/posts/:postId/unlike", auth, unlikePost);
 
 // User route
 app.post("/signup", signup);
