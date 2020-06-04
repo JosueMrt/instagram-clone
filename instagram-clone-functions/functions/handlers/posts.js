@@ -68,7 +68,6 @@ exports.createComment = async (req, res) => {
   try {
     const post = await db.doc(`/posts/${req.params.postId}`).get();
     !post.exists && res.status(404).json({ error: "Post does not exist" });
-
     const newComment = {
       userHandle: req.user.handle,
       profilePicUrl: req.user.profilePicUrl,
@@ -76,7 +75,7 @@ exports.createComment = async (req, res) => {
       body: req.body.body,
       createdAt: new Date().toISOString(),
     };
-
+    post.ref.update({ commentCount: post.data().commentCount + 1 });
     await db.collection("comments").add(newComment);
     res.status(201).json({ message: "Comment created sucessfully" });
   } catch (err) {
