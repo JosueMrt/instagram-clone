@@ -8,6 +8,7 @@ const {
   createComment,
   likePost,
   unlikePost,
+  deletePost,
 } = require("./handlers/posts");
 
 const {
@@ -28,6 +29,7 @@ app.post("/posts", auth, createPost);
 app.post("/posts/:postId/comment", auth, createComment);
 app.get("/posts/:postId/like", auth, likePost);
 app.get("/posts/:postId/unlike", auth, unlikePost);
+app.delete("/posts/:postId", auth, deletePost);
 
 // User route
 app.post("/signup", signup);

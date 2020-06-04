@@ -142,3 +142,20 @@ exports.unlikePost = async (req, res) => {
     res.status(500).json({ error: err });
   }
 };
+
+// Delete post
+exports.deletePost = async (req, res) => {
+  try {
+    const documentQuery = db.doc(`/posts/${req.params.postId}`);
+    const document = await documentQuery.get();
+    if (document.exists) {
+      if (document.data().userHandle === req.user.handle) {
+        document.ref.delete();
+        res.json({ message: "Post deleted sucessfully" });
+      } else res.status(403).json({ error: "Unauthorized" });
+    } else res.status(404).json({ error: "Post doesn't exist" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err });
+  }
+};
