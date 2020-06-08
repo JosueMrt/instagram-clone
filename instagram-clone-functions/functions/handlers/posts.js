@@ -1,5 +1,6 @@
 const { db } = require("../util/admin");
 
+// Get all posts
 exports.getAllPosts = async (req, res) => {
   try {
     const posts = await db.collection("posts").get();

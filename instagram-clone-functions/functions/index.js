@@ -119,3 +119,29 @@ exports.deleteCommentNotification = functions
       console.error(err);
     }
   });
+
+// Update post when user changes profile picture
+exports.onProfilePictureChange = functions
+  .region("europe-west3")
+  .firestore.document("/users/{userId}")
+  .onUpdate(async (change) => {
+    try {
+      if (
+        change.before.data().profilePicUrl !== change.after.data().profilePicUrl
+      ) {
+        const batch = db.batch();
+        const posts = await db
+          .collection("posts")
+          .where("userHandle", "==", change.before.data().handle)
+          .get();
+        posts.forEach((doc) => {
+          batch.update(doc.ref, {
+            profilePicUrl: change.after.data().profilePicUrl,
+          });
+        });
+        await batch.commit();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
