@@ -18,12 +18,10 @@ exports.validateSignUp = (data) => {
 
 exports.reduceUserDetails = (data) => {
   let userDetails = {};
-
   if (data.bio.trim().length) userDetails.bio = data.bio;
   if (data.location.trim().length) userDetails.location = data.location;
   data.website.trim().slice(0, 4) === "http"
     ? (userDetails.website = data.website.trim())
     : (userDetails.website = `http://${data.website.trim()}`);
-
   return userDetails;
 };

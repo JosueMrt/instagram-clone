@@ -13,10 +13,8 @@ exports.signup = async (req, res) => {
     confirmPassword: req.body.confirmPassword,
     handle: req.body.handle,
   };
-
   const { valid, errors } = validateSignUp(newUser);
   if (!valid) res.status(400).json(errors);
-
   try {
     const user = await db.doc(`/users/${newUser.handle}`).get();
     // Check if user handle is already taken
@@ -29,7 +27,6 @@ exports.signup = async (req, res) => {
       const data = await firebase
         .auth()
         .createUserWithEmailAndPassword(newUser.email, newUser.password);
-
       // Adding additional info about the user to the database
       await db.doc(`/users/${newUser.handle}`).set({
         email: newUser.email,
@@ -41,7 +38,6 @@ exports.signup = async (req, res) => {
       const token = await data.user.getIdToken();
       res.status(201).json({ token });
     }
-
     // Catch any errors that may occur
   } catch (err) {
     err.code === "auth/email-already-in-use"
@@ -51,6 +47,7 @@ exports.signup = async (req, res) => {
   }
 };
 
+// Login Route
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -77,10 +74,32 @@ exports.addUserDetails = async (req, res) => {
   }
 };
 
-// Get own user details
+// Get any user's details
 exports.getUserDetails = async (req, res) => {
   let userData = {};
+  try {
+    const userDoc = await db.doc(`/users/${req.params.handle}`).get();
+    if (!userDoc.exists) res.status(404).json({ message: "Does not exist" });
+    userData.user = userDoc.data();
+    const userPosts = await db
+      .collection("posts")
+      .where("userHandle", "==", req.params.handle)
+      .orderBy("date", "desc")
+      .get();
+    userData.posts = [];
+    userPosts.forEach((doc) => {
+      userData.posts.push({ ...doc.data(), postId: doc.id });
+    });
+    res.json(userData);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err });
+  }
+};
 
+// Get authenticated user
+exports.getUserOwnDetails = async (req, res) => {
+  let userData = {};
   try {
     let doc = await db.doc(`/users/${req.user.handle}`).get();
     if (doc.exists) {
@@ -92,6 +111,16 @@ exports.getUserDetails = async (req, res) => {
       userData.likes = [];
       likes.forEach((doc) => {
         userData.likes.push(doc.data());
+      });
+      let notifications = await db
+        .collection("notifications")
+        .where("recipient", "==", req.user.handle)
+        .orderBy("createdAt", "desc")
+        .limit(10)
+        .get();
+      userData.notifications = [];
+      notifications.forEach((doc) => {
+        userData.notifications.push({ ...doc.data(), notificationId: doc.id });
       });
     }
     res.json(userData);
