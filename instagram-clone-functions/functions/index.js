@@ -19,6 +19,7 @@ const {
   addUserDetails,
   getUserDetails,
   getUserOwnDetails,
+  markNotificationsRead,
 } = require("./handlers/users");
 
 // Initialize Express
@@ -40,6 +41,7 @@ app.post("/user/image", auth, uploadProfileImg);
 app.post("/user", auth, addUserDetails);
 app.get(`/user/:handle`, getUserDetails);
 app.get("/user", auth, getUserOwnDetails);
+app.post("/notifications", auth, markNotificationsRead);
 
 exports.api = functions.region("europe-west3").https.onRequest(app);
 

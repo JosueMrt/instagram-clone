@@ -80,7 +80,7 @@ exports.getUserDetails = async (req, res) => {
   try {
     const userDoc = await db.doc(`/users/${req.params.handle}`).get();
     if (!userDoc.exists) res.status(404).json({ message: "Does not exist" });
-    userData.user = userDoc.data();
+    userData.credentials = userDoc.data();
     const userPosts = await db
       .collection("posts")
       .where("userHandle", "==", req.params.handle)
@@ -130,18 +130,31 @@ exports.getUserOwnDetails = async (req, res) => {
   }
 };
 
+exports.markNotificationsRead = async (req, res) => {
+  let batch = db.batch();
+  try {
+    req.body.forEach(async (notificationId) => {
+      batch.update(db.doc(`/notifications/${notificationId}`), {
+        read: true,
+      });
+    });
+    await batch.commit();
+    res.json({ message: "Updated sucessfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err });
+  }
+};
+
 // Upload User Profile Picture
 exports.uploadProfileImg = (req, res) => {
   const BusBoy = require("busboy");
   const path = require("path");
   const os = require("os");
   const fs = require("fs");
-
   const busboy = new BusBoy({ headers: req.headers });
-
   let imgFileName;
   let imageToUpload;
-
   busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
     console.log(mimetype, os.tmpdir(), file);
     if (mimetype !== "image/jpeg" && mimetype !== "image/png") {
@@ -156,7 +169,6 @@ exports.uploadProfileImg = (req, res) => {
     imageToUpload = { filepath, mimetype };
     file.pipe(fs.createWriteStream(filepath));
   });
-
   busboy.on("finish", async () => {
     try {
       await admin
